@@ -41,6 +41,23 @@ export default async function DashboardPage() {
         <SignOutButton />
       </header>
 
+      {cultivos.length === 0 && (
+        // Onboarding: primera vez sin cultivos.
+        <div className="card space-y-3 border-huerto-200 bg-huerto-50 text-center">
+          <p className="text-3xl" aria-hidden>
+            🌱
+          </p>
+          <h2 className="font-semibold text-huerto-800">¡Bienvenido a tu huerto!</h2>
+          <p className="text-sm text-huerto-600">
+            Empieza añadiendo un cultivo. Luego podrás registrar sus riegos y ver cuándo
+            le toca regar.
+          </p>
+          <Link href="/cultivos/nuevo" className="btn-primary w-full">
+            + Añadir mi primer cultivo
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <Resumen titulo="Cultivos" valor={cultivos.length} icono="🌱" />
         <Resumen titulo="Riego hoy" valor={pendientes.length} icono="💧" />

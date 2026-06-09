@@ -33,6 +33,7 @@ export class OpenMeteoProvider implements WeatherProvider {
 
     return {
       ubicacion: { latitud, longitud },
+      zonaHoraria: json.timezone ?? 'UTC',
       actual: {
         temperatura: c.temperature_2m,
         humedadRelativa: c.relative_humidity_2m,

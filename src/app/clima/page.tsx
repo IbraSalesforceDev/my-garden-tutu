@@ -5,23 +5,27 @@ import { api, ApiError } from '@/lib/apiClient';
 import type { Clima } from '@/core/domain/entities/Clima';
 import { describirClima } from '@/lib/weatherCodes';
 
-// Ubicación por defecto: Madrid (se sobrescribe con geolocalización).
-const DEFAULT = { lat: 40.4168, lon: -3.7038 };
+// Ubicación por defecto: Madrid (se usa si no hay permiso de geolocalización).
+const DEFAULT = { lat: 40.4168, lon: -3.7038, nombre: 'Madrid (por defecto)' };
 
 const diaFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'short' });
+
+type Fuente = 'gps' | 'default';
 
 /** Consulta meteorológica con geolocalización del dispositivo. */
 export default function ClimaPage() {
   const [clima, setClima] = useState<Clima | null>(null);
+  const [fuente, setFuente] = useState<Fuente>('default');
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  const cargar = useCallback(async (lat: number, lon: number) => {
+  const cargar = useCallback(async (lat: number, lon: number, origen: Fuente) => {
     setCargando(true);
     setError(null);
     try {
       const data = await api.get<Clima>(`/api/clima?lat=${lat}&lon=${lon}`);
       setClima(data);
+      setFuente(origen);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo cargar el clima');
     } finally {
@@ -29,17 +33,22 @@ export default function ClimaPage() {
     }
   }, []);
 
-  useEffect(() => {
+  const usarMiUbicacion = useCallback(() => {
     if (!navigator.geolocation) {
-      cargar(DEFAULT.lat, DEFAULT.lon);
+      cargar(DEFAULT.lat, DEFAULT.lon, 'default');
       return;
     }
+    setCargando(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => cargar(pos.coords.latitude, pos.coords.longitude),
-      () => cargar(DEFAULT.lat, DEFAULT.lon),
+      (pos) => cargar(pos.coords.latitude, pos.coords.longitude, 'gps'),
+      () => cargar(DEFAULT.lat, DEFAULT.lon, 'default'),
       { timeout: 8000 },
     );
   }, [cargar]);
+
+  useEffect(() => {
+    usarMiUbicacion();
+  }, [usarMiUbicacion]);
 
   return (
     <section className="space-y-4">
@@ -50,6 +59,34 @@ export default function ClimaPage() {
 
       {clima && !cargando && (
         <>
+          {/* Ubicación y zona horaria de los datos mostrados. */}
+          <div className="card space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-huerto-800">
+                  {fuente === 'gps' ? '📍 Tu ubicación' : `📍 ${DEFAULT.nombre}`}
+                </p>
+                <p className="text-xs text-huerto-400">
+                  {clima.ubicacion.latitud.toFixed(2)},{' '}
+                  {clima.ubicacion.longitud.toFixed(2)} · {clima.zonaHoraria}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={usarMiUbicacion}
+                className="btn-secondary px-3 py-1.5 text-xs"
+              >
+                Usar mi ubicación
+              </button>
+            </div>
+            {fuente === 'default' && (
+              <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
+                Mostrando Madrid porque no hay permiso de ubicación. Pulsa “Usar mi
+                ubicación” y acepta el permiso para ver tu zona.
+              </p>
+            )}
+          </div>
+
           <div className="card flex items-center justify-between">
             <div>
               <p className="text-4xl font-bold text-huerto-700">
