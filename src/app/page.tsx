@@ -3,6 +3,7 @@ import { buildServerServices } from '@/infrastructure/container';
 import { requireUserId } from '@/lib/auth';
 import { necesitaRiego } from '@/core/usecases/riegoUtils';
 import { SetupNotice } from '@/components/SetupNotice';
+import { SignOutButton } from '@/components/SignOutButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,11 +31,14 @@ export default async function DashboardPage() {
 
   return (
     <section className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold text-huerto-800">Mi Huerto 🌿</h1>
-        <p className="text-sm text-huerto-500">
-          {cultivos.length} cultivo(s) · {pendientes.length} necesitan riego
-        </p>
+      <header className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-huerto-800">Mi Huerto 🌿</h1>
+          <p className="text-sm text-huerto-500">
+            {cultivos.length} cultivo(s) · {pendientes.length} necesitan riego
+          </p>
+        </div>
+        <SignOutButton />
       </header>
 
       <div className="grid grid-cols-2 gap-3">
