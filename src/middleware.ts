@@ -28,7 +28,33 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresca el token si está caducado (valida el JWT).
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // Las API gestionan su propia autorización (devuelven 401 JSON); no se
+  // redirigen para no romper las llamadas fetch del cliente.
+  if (pathname.startsWith('/api')) {
+    return response;
+  }
+
+  const esPublica = pathname.startsWith('/login') || pathname.startsWith('/auth');
+
+  // Sin sesión en ruta protegida → a la pantalla de acceso.
+  if (!user && !esPublica) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // Con sesión en /login → al dashboard.
+  if (user && pathname.startsWith('/login')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }
