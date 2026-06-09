@@ -24,6 +24,8 @@ export interface PronosticoDia {
 
 export interface Clima {
   ubicacion: { latitud: number; longitud: number };
+  /** Zona horaria local de la ubicación, p. ej. "Europe/Madrid". */
+  zonaHoraria: string;
   actual: CondicionActual;
   pronostico: PronosticoDia[];
   obtenidoEn: string;
