@@ -5,8 +5,8 @@ import { api, ApiError } from '@/lib/apiClient';
 import type { Clima } from '@/core/domain/entities/Clima';
 import { describirClima } from '@/lib/weatherCodes';
 
-// Ubicación por defecto: Madrid (se usa si no hay permiso de geolocalización).
-const DEFAULT = { lat: 40.4168, lon: -3.7038, nombre: 'Madrid (por defecto)' };
+// Ubicación por defecto: Sevilla (se usa si no hay permiso de geolocalización).
+const DEFAULT = { lat: 37.3891, lon: -5.9845, nombre: 'Sevilla (por defecto)' };
 
 const diaFmt = new Intl.DateTimeFormat('es-ES', { weekday: 'short' });
 
@@ -81,7 +81,7 @@ export default function ClimaPage() {
             </div>
             {fuente === 'default' && (
               <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700">
-                Mostrando Madrid porque no hay permiso de ubicación. Pulsa “Usar mi
+                Mostrando Sevilla porque no hay permiso de ubicación. Pulsa “Usar mi
                 ubicación” y acepta el permiso para ver tu zona.
               </p>
             )}
