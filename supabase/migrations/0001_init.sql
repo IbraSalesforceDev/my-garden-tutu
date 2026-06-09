@@ -50,6 +50,7 @@ create index if not exists riegos_cultivo_id_fecha_idx on public.riegos (cultivo
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
