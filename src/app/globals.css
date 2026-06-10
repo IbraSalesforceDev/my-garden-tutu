@@ -12,7 +12,9 @@ body {
 }
 
 body {
-  @apply bg-huerto-50 text-huerto-900 antialiased;
+  @apply text-huerto-900 antialiased;
+  background: linear-gradient(180deg, #e7f3e7 0%, #f1f8f1 30%, #f6faf3 100%);
+  background-attachment: fixed;
   /* Respeta el área segura en dispositivos con notch. */
   padding-bottom: env(safe-area-inset-bottom);
 }

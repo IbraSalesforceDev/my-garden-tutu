@@ -1,16 +1,38 @@
 import Link from 'next/link';
 import { buildServerServices } from '@/infrastructure/container';
 import { requireUserId } from '@/lib/auth';
-import { necesitaRiego } from '@/core/usecases/riegoUtils';
+import { estadoRiego } from '@/core/usecases/riegoUtils';
 import { SetupNotice } from '@/components/SetupNotice';
 import { SignOutButton } from '@/components/SignOutButton';
+import { RegarButton } from '@/components/RegarButton';
+import { WeatherMini } from '@/components/WeatherMini';
+import { EstadoBadge } from '@/components/EstadoBadge';
 
 export const dynamic = 'force-dynamic';
 
+const fechaFmt = new Intl.DateTimeFormat('es-ES', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'Europe/Madrid',
+});
+
+function saludo(): string {
+  const hora = Number(
+    new Intl.DateTimeFormat('es-ES', {
+      hour: 'numeric',
+      hour12: false,
+      timeZone: 'Europe/Madrid',
+    }).format(new Date()),
+  );
+  if (hora >= 6 && hora < 14) return 'Buenos días';
+  if (hora >= 14 && hora < 21) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
 /**
- * Dashboard principal (Server Component). Carga datos directamente desde los
- * casos de uso en el servidor. Si Supabase no está configurado o no hay sesión,
- * muestra un aviso de configuración en lugar de fallar.
+ * Dashboard principal: el "parte del huerto" del día. Tiempo, qué toca regar
+ * (con riego de un toque) y estado de todos los cultivos.
  */
 export default async function DashboardPage() {
   let datos: Awaited<ReturnType<typeof cargarDashboard>> | null = null;
@@ -27,30 +49,45 @@ export default async function DashboardPage() {
   }
 
   const { cultivos, ultimos } = datos;
-  const pendientes = cultivos.filter((c) => necesitaRiego(c, ultimos[c.id]));
+  const conEstado = cultivos.map((c) => ({
+    cultivo: c,
+    riego: estadoRiego(c, ultimos[c.id]),
+  }));
+  const pendientes = conEstado.filter((x) => x.riego.necesita);
+  const alDia = conEstado.filter((x) => !x.riego.necesita);
 
   return (
-    <section className="space-y-6">
-      <header className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-huerto-800">Mi Huerto 🌿</h1>
-          <p className="text-sm text-huerto-500">
-            {cultivos.length} cultivo(s) · {pendientes.length} necesitan riego
-          </p>
+    <section className="space-y-5">
+      {/* Cabecera tipo hero */}
+      <header className="rounded-3xl bg-gradient-to-br from-huerto-600 to-huerto-800 p-5 text-white shadow-md">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm text-huerto-100 first-letter:uppercase">
+              {fechaFmt.format(new Date())}
+            </p>
+            <h1 className="mt-0.5 text-2xl font-bold">{saludo()} 🌿</h1>
+          </div>
+          <SignOutButton />
         </div>
-        <SignOutButton />
+        <p className="mt-3 text-sm text-huerto-100">
+          {cultivos.length === 0
+            ? 'Tu huerto te espera'
+            : pendientes.length === 0
+              ? '¡Todo regado! Tu huerto está al día 🎉'
+              : `${pendientes.length} cultivo${pendientes.length > 1 ? 's' : ''} esperando agua`}
+        </p>
       </header>
 
+      <WeatherMini />
+
       {cultivos.length === 0 && (
-        // Onboarding: primera vez sin cultivos.
         <div className="card space-y-3 border-huerto-200 bg-huerto-50 text-center">
           <p className="text-3xl" aria-hidden>
             🌱
           </p>
           <h2 className="font-semibold text-huerto-800">¡Bienvenido a tu huerto!</h2>
           <p className="text-sm text-huerto-600">
-            Empieza añadiendo un cultivo. Luego podrás registrar sus riegos y ver cuándo
-            le toca regar.
+            Empieza añadiendo un cultivo. Luego podrás regarlo con un toque desde aquí.
           </p>
           <Link href="/cultivos/nuevo" className="btn-primary w-full">
             + Añadir mi primer cultivo
@@ -58,35 +95,71 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Resumen titulo="Cultivos" valor={cultivos.length} icono="🌱" />
-        <Resumen titulo="Riego hoy" valor={pendientes.length} icono="💧" />
-      </div>
-
+      {/* Pendientes de riego: la acción principal del día, a un toque */}
       {pendientes.length > 0 && (
-        <div className="card border-amber-200 bg-amber-50">
-          <h2 className="mb-2 font-semibold text-amber-800">Pendientes de riego</h2>
-          <ul className="space-y-1 text-sm text-amber-900">
-            {pendientes.map((c) => (
-              <li key={c.id} className="flex justify-between">
-                <span>{c.nombre}</span>
-                <Link href={`/cultivos/${c.id}`} className="underline">
-                  Regar
+        <div>
+          <h2 className="mb-2 flex items-center gap-1 font-semibold text-huerto-800">
+            💧 Toca regar hoy
+          </h2>
+          <ul className="space-y-2">
+            {pendientes.map(({ cultivo, riego }) => (
+              <li
+                key={cultivo.id}
+                className="card flex items-center justify-between border-sky-200 bg-sky-50/60"
+              >
+                <Link href={`/cultivos/${cultivo.id}`} className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-huerto-800">
+                    {cultivo.nombre}
+                  </p>
+                  <p className="text-xs text-huerto-500">
+                    {riego.nuncaRegado
+                      ? `sembrado hace ${riego.diasDesdeUltimo} día(s), sin riegos aún`
+                      : `último riego hace ${riego.diasDesdeUltimo} día(s)`}
+                  </p>
                 </Link>
+                <RegarButton cultivoId={cultivo.id} />
               </li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="flex gap-3">
-        <Link href="/cultivos/nuevo" className="btn-primary flex-1">
-          + Nuevo cultivo
+      {/* Resto de cultivos, al día */}
+      {alDia.length > 0 && (
+        <div>
+          <h2 className="mb-2 font-semibold text-huerto-800">🌱 Al día</h2>
+          <ul className="space-y-2">
+            {alDia.map(({ cultivo, riego }) => (
+              <li key={cultivo.id} className="card flex items-center justify-between">
+                <Link href={`/cultivos/${cultivo.id}`} className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-semibold text-huerto-800">
+                      {cultivo.nombre}
+                    </p>
+                    <EstadoBadge estado={cultivo.estado} />
+                  </div>
+                  <p className="text-xs text-huerto-400">
+                    {cultivo.estado === 'finalizado'
+                      ? 'ciclo terminado'
+                      : riego.diasHastaProximo <= 1
+                        ? 'próximo riego: mañana'
+                        : `próximo riego en ${riego.diasHastaProximo} días`}
+                  </p>
+                </Link>
+                {cultivo.estado !== 'finalizado' && (
+                  <RegarButton cultivoId={cultivo.id} size="sm" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {cultivos.length > 0 && (
+        <Link href="/cultivos/nuevo" className="btn-secondary w-full">
+          + Añadir otro cultivo
         </Link>
-        <Link href="/cultivos" className="btn-secondary flex-1">
-          Ver cultivos
-        </Link>
-      </div>
+      )}
     </section>
   );
 }
@@ -99,26 +172,4 @@ async function cargarDashboard() {
     riegoSvc.ultimoPorCultivo(userId),
   ]);
   return { cultivos, ultimos };
-}
-
-function Resumen({
-  titulo,
-  valor,
-  icono,
-}: {
-  titulo: string;
-  valor: number;
-  icono: string;
-}) {
-  return (
-    <div className="card flex items-center gap-3">
-      <span className="text-2xl" aria-hidden>
-        {icono}
-      </span>
-      <div>
-        <p className="text-2xl font-bold text-huerto-700">{valor}</p>
-        <p className="text-xs text-huerto-500">{titulo}</p>
-      </div>
-    </div>
-  );
 }
