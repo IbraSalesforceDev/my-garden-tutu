@@ -10,15 +10,18 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+
+  // Solo se permite redirigir a rutas internas (evita open redirect).
+  const nextParam = searchParams.get('next') ?? '/';
+  const next = nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/';
 
   if (code) {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(new URL(next, origin));
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(new URL('/login?error=auth', origin));
 }
